@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 import pandas as pd  
 
-def generate_csv(file_dir, csv_path,mode='train'):
+def generate_csv(file_dir, csv_path, mode='train'):
     # 生成file_dir下所有文件的路径
     file_list = []
     for root, dirs, files in os.walk(file_dir):
@@ -39,6 +39,6 @@ if __name__ == '__main__':
     arg.add_argument('-s','--split', action='store_true', default=False,help='slpit dataset')
     arg.add_argument('-t','--threshold',type=float,default=0.8)
     args = arg.parse_args()
-    generate_csv(args.input_file_dir, args.output_path,args.mode)
+    generate_csv(args.input_file_dir, args.output_path, args.mode)
     if args.split:
         split_train_test_csv(args.output_path,threshold=args.threshold)

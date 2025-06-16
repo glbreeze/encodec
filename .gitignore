@@ -1,4 +1,6 @@
-
+LibriSpeech/
+librispeech_test.csv
+librispeech_train100h.csv
 .vscode/*
 
 # Local History for Visual Studio Code

@@ -1,5 +1,6 @@
 import os
 import random
+from pathlib import Path
 
 import librosa
 import pandas as pd
@@ -13,7 +14,7 @@ from utils import convert_audio
 
 
 class CustomAudioDataset(torch.utils.data.Dataset):
-    def __init__(self, config, transform=None,mode='train'):
+    def __init__(self, config, root_path ='/scratch/lg154/sseg/encodec', transform=None, mode='train'):
         assert mode in ['train', 'test'], 'dataset mode must be train or test'
         if mode == 'train':
             self.audio_files = pd.read_csv(config.datasets.train_csv_path,on_bad_lines='skip')
@@ -24,6 +25,7 @@ class CustomAudioDataset(torch.utils.data.Dataset):
         self.tensor_cut = config.datasets.tensor_cut
         self.sample_rate = config.model.sample_rate
         self.channels = config.model.channels
+        self.root_path = root_path
 
     def __len__(self):
         return self.fixed_length if self.fixed_length and len(self.audio_files) > self.fixed_length else len(self.audio_files)  
@@ -34,15 +36,19 @@ class CustomAudioDataset(torch.utils.data.Dataset):
             raise StopIteration
         if idx is None:
             idx = random.randrange(len(self))
+        
+        rel_path = self.audio_files.iloc[idx, 0]
+        abs_path = (Path(self.root_path) / rel_path).resolve()
+
         try:
-            logger.debug(f'Loading {self.audio_files.iloc[idx, :].values[0]}')
+            logger.debug(f'Loading {abs_path}')
             waveform, sample_rate = librosa.load(
-                self.audio_files.iloc[idx, :].values[0], 
+                str(abs_path), 
                 sr=self.sample_rate,
                 mono=self.channels == 1
             )
         except (audioread.exceptions.NoBackendError, ZeroDivisionError):
-            logger.warning(f"Not able to load {self.audio_files.iloc[idx, :].values[0]}, removing from dataset")
+            logger.warning(f"Not able to load {abs_path}, removing from dataset")
             self.audio_files.drop(idx, inplace=True)
             return self[idx]
 

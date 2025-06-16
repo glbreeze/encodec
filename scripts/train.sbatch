@@ -1,11 +1,13 @@
 #!/bin/bash
-#SBATCH -p sorcery
-#SBATCH --mem=80G
-#SBATCH --time=4-12
-#SBATCH --cpus-per-task=20
-#SBATCH --gpus=1
-#SBATCH -J encodec_train
-#SBATCH --constraint=ARCH:X86
+
+#SBATCH --job-name=encodec_train
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=80GB
+#SBATCH --time=48:00:00
+#SBATCH --gres=gpu
+#SBATCH --partition=a100_1,a100_2,v100,rtx8000
 
 srun --container-name=encodec --container-mounts=/hpi/fs00/share/fg-meinel/datasets/audio:/home/audio,/hpi/fs00/home/leonardo.auri/:/home/leonardo.auri/ --container-workdir=/home/leonardo.auri/encodec-pytorch/ \
         --container-writable \
@@ -18,8 +20,6 @@ srun --container-name=encodec --container-mounts=/hpi/fs00/share/fg-meinel/datas
         datasets.tensor_cut=48_000 \
         datasets.batch_size=16 \
         datasets.num_workers=18 \
-        datasets.train_csv_path=/home/leonardo.auri/encodec-pytorch/datasets/fma_large_train.csv \
-        datasets.test_csv_path=/home/leonardo.auri/encodec-pytorch/datasets/fma_large_test.csv \
         lr_scheduler.warmup_epoch=1 \
         model.sample_rate=48_000 \
         model.target_bandwidths="[3., 6., 12., 24.]" \
