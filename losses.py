@@ -50,10 +50,9 @@ def total_loss(fmap_real, logits_fake, fmap_fake, input_wav, output_wav, sample_
             # l_feat = l_feat + l1Loss(fmap_real[tt1][tt2].detach(), fmap_fake[tt1][tt2]) / torch.mean(torch.abs(fmap_real[tt1][tt2].detach()))
             l_feat = l_feat + l1Loss(fmap_real[tt1][tt2], fmap_fake[tt1][tt2]) / torch.mean(torch.abs(fmap_real[tt1][tt2]))
 
-    KL_scale = len(fmap_real)*len(fmap_real[0]) # len(fmap_real) == len(fmap_fake) == len(logits_real) == len(logits_fake) == disc.num_discriminators == K
-    l_feat /= KL_scale
-    K_scale = len(fmap_real) # len(fmap_real[0]) = len(fmap_fake[0]) == L
-    l_g /= K_scale
+    # len(fmap_real) = len(fmap_fake) = len(logits_real) = len(logits_fake) = disc.num_discriminators = K, len(fmap_real[0]) = len(fmap_fake[0]) = L
+    l_feat /= (len(fmap_real)*len(fmap_real[0]))
+    l_g /= len(fmap_real)
 
     return {
         'l_t': l_t,
