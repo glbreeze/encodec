@@ -194,7 +194,7 @@ class EncodecModel(nn.Module):
             out = out * scale.view(-1, 1, 1)
         return out
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, ) -> torch.Tensor:
         frames = self.encode(x) # input_wav -> encoder , x.shape = [BatchSize,channel,tensor_cut or original length] 2,1,10000
         if self.training:
             # if encodec is training, input_wav -> encoder -> quantizer forward -> decode
@@ -251,13 +251,18 @@ class EncodecModel(nn.Module):
                    audio_normalize: bool = False,
                    segment: tp.Optional[float] = None,
                    name: str = 'unset',
-                   ratios=[8, 5, 4, 2]):
+                   ratios=[8, 5, 4, 2],
+                   stagewise=False, 
+                   stage=1):
         encoder = m.SEANetEncoder(channels=channels, norm=model_norm, causal=causal,ratios=ratios)
         decoder = m.SEANetDecoder(channels=channels, norm=model_norm, causal=causal,ratios=ratios)
+    
         n_q = int(1000 * target_bandwidths[-1] // (math.ceil(sample_rate / encoder.hop_length) * 10)) # int(1000*24//(math.ceil(24000/320)*10))
+        train_n_q = stage if stagewise else None
         quantizer = qt.ResidualVectorQuantizer(
             dimension=encoder.dimension,
             n_q=n_q,
+            train_n_q=train_n_q,
             bins=1024,
         )
         model = EncodecModel(

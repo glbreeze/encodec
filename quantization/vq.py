@@ -7,7 +7,7 @@
 """Residual vector quantizer implementation."""
 
 from dataclasses import dataclass, field
-import math
+import math, random
 import typing as tp
 
 import torch
@@ -65,6 +65,7 @@ class ResidualVectorQuantizer(nn.Module):
     ):
         super().__init__()
         self.n_q = n_q
+        self.train_n_q = None
         self.dimension = dimension
         self.bins = bins
         self.decay = decay
@@ -93,7 +94,13 @@ class ResidualVectorQuantizer(nn.Module):
                 the associated bandwidth and any penalty term for the loss.
         """
         bw_per_q = self.get_bandwidth_per_quantizer(sample_rate)
-        n_q = self.get_num_quantizers_for_bandwidth(sample_rate, bandwidth)
+        max_n_q = self.get_num_quantizers_for_bandwidth(sample_rate, bandwidth)
+
+        if self.training and hasattr(self, 'train_n_q') and self.train_n_q:
+            n_q = random.randint(1, min(self.train_n_q, max_n_q))
+        else:
+            n_q = max_n_q 
+            
         quantized, codes, commit_loss = self.vq(x, n_q=n_q)
         bw = torch.tensor(n_q * bw_per_q).to(x)
         return QuantizedResult(quantized, codes, bw, penalty=torch.mean(commit_loss))

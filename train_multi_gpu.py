@@ -110,7 +110,9 @@ class Trainer:
             audio_normalize=self.config.model.audio_normalize,
             segment=self.config.model.segment,
             name=self.config.model.name,
-            ratios=self.config.model.ratios)
+            ratios=self.config.model.ratios,
+            stagewise=self.config.quantizer.stagewise,
+            stage=self.config.quantizer.stage)
 
         self.disc_model = MultiScaleSTFTDiscriminator(
             in_channels=self.config.model.channels,

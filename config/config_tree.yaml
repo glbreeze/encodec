@@ -61,6 +61,5 @@ balancer:
     l_feat: 3
 
 quantizer:
-  stagewise: False
+  stagewise: True
   stage: 1
-
