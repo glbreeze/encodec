@@ -139,7 +139,7 @@ class EncodecModel(nn.Module):
             assert stride is not None
 
         encoded_frames: tp.List[EncodedFrame] = []
-        for offset in range(0, length, stride): # shift windows to choose data
+        for offset in range(0, length - segment_length + 1, stride): # shift windows to choose data
             frame = x[:, :, offset: offset + segment_length]
             encoded_frames.append(self._encode_frame(frame))
         return encoded_frames
@@ -160,12 +160,14 @@ class EncodecModel(nn.Module):
 
         emb = self.encoder(x) # [2,1,10000] -> [2,128,32]
         #TODO: Encodec Trainer的training
-        if self.training:
-            return emb,scale
-        codes = self.quantizer.encode(emb, self.frame_rate, self.bandwidth)
-        codes = codes.transpose(0, 1)
-        # codes is [B, K, T], with T frames, K nb of codebooks.
-        return codes, scale
+        return emb, scale
+    
+    def quantize(self, frames: tp.List[tp.Tuple[torch.Tensor, torch.Tensor]]) -> tp.List[EncodedFrame]:
+        quant_frames = []
+        for emb, scale in frames: 
+            codes = self.quantizer.encode(emb, self.frame_rate, self.bandwidth).transpose(0, 1)
+            quant_frames.append((codes, scale))
+        return quant_frames
 
     def decode(self, encoded_frames: tp.List[EncodedFrame]) -> torch.Tensor:
         """Decode the given frames into a waveform.
@@ -199,10 +201,10 @@ class EncodecModel(nn.Module):
             loss_w = torch.tensor([0.0], device=x.device, requires_grad=True)
             codes = []
             # self.quantizer.train(self.training)
-            index = torch.tensor(random.randint(0,len(self.target_bandwidths)-1),device=x.device)
+            bw_index = torch.tensor(random.randint(0,len(self.target_bandwidths)-1),device=x.device)
             if torch.distributed.is_initialized():
-                torch.distributed.broadcast(index, src=0)
-            bw = self.target_bandwidths[index.item()]# fixme: variable bandwidth training, if you broadcast bd, the broadcast will encounter error
+                torch.distributed.broadcast(bw_index, src=0)
+            bw = self.target_bandwidths[bw_index.item()]# fixme: variable bandwidth training, if you broadcast bd, the broadcast will encounter error
             for emb,scale in frames:
                 qv = self.quantizer(emb,self.frame_rate,bw)
                 loss_w = loss_w + qv.penalty # loss_w is the sum of all quantizer forward loss (RVQ commitment loss :l_w)
@@ -210,7 +212,8 @@ class EncodecModel(nn.Module):
             return self.decode(codes)[:,:,:x.shape[-1]],loss_w,frames
         else:
             # if encodec is not training, input_wav -> encoder -> quantizer encode -> decode
-            return self.decode(frames)[:, :, :x.shape[-1]]
+            quant_frames = self.quantize(frames)
+            return self.decode(quant_frames)[:, :, :x.shape[-1]]
 
     def set_target_bandwidth(self, bandwidth: float):
         if bandwidth not in self.target_bandwidths:

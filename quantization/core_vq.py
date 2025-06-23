@@ -216,16 +216,18 @@ class EuclideanCodebook(nn.Module):
         self.init_embed_(x) # to better initialize the codebook
 
         embed_ind = self.quantize(x) # get the index of the closest embed
-        embed_onehot = F.one_hot(embed_ind, self.codebook_size).type(dtype)
+        embed_onehot = F.one_hot(embed_ind, self.codebook_size).type(dtype) #[2400, 1024]
         embed_ind = self.postprocess_emb(embed_ind, shape)
         quantize = self.dequantize(embed_ind)
 
         if self.training: # update the codebook
-            # We do the expiry of code at that point as buffers are in sync
-            # and all the workers will take the same decision.
+            # We do the expiry of code at that point as buffers are in sync and all the workers will take the same decision.
+            # --- Expire underused codes ---
             self.expire_codes_(x)
-            ema_inplace(self.cluster_size, embed_onehot.sum(0), self.decay)
+            
+            # --- EMA Update ---
             embed_sum = x.t() @ embed_onehot
+            ema_inplace(self.cluster_size, embed_onehot.sum(0), self.decay)
             ema_inplace(self.embed_avg, embed_sum.t(), self.decay)
             cluster_size = (
                 laplace_smoothing(self.cluster_size, self.codebook_size, self.epsilon)

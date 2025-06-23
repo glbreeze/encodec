@@ -5,10 +5,11 @@ common:
   max_epoch: 100
   seed: 3401
   amp: False
+  exp_name: 'base'
 
 datasets:
-  train_csv_path: '/scratch/lg154/sseg/encodec/librispeech_train100h.csv'
-  test_csv_path: '/scratch/lg154/sseg/encodec/librispeech_test.csv'
+  train_csv_path: '/scratch/lg154/sseg/encodec/librispeech_train100h_train.csv'
+  test_csv_path: '/scratch/lg154/sseg/encodec/librispeech_train100h_test.csv'
   batch_size: 12
   tensor_cut: 72000
   num_workers: 4
@@ -30,7 +31,7 @@ lr_scheduler:
   warmup_epoch: 5
 
 model:
-  target_bandwidths: [1.5, 3., 6., 12., 24.]
+  target_bandwidths: [3., 6., 12., 24.]
   sample_rate: 24_000
   channels: 1
   train_discriminator: True # you can set it to 2/3 and other number to train discriminator only

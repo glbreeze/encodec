@@ -3,15 +3,16 @@ import random
 from pathlib import Path
 
 import librosa
+import torchaudio
 import pandas as pd
 import torch
 import audioread
+import torchaudio.functional as F
 
 import logging
 logger = logging.getLogger(__name__)
 
 from utils import convert_audio
-
 
 class CustomAudioDataset(torch.utils.data.Dataset):
     def __init__(self, config, root_path ='/scratch/lg154/sseg/encodec', transform=None, mode='train'):
@@ -42,23 +43,22 @@ class CustomAudioDataset(torch.utils.data.Dataset):
 
         try:
             logger.debug(f'Loading {abs_path}')
-            waveform, sample_rate = librosa.load(
-                str(abs_path), 
-                sr=self.sample_rate,
-                mono=self.channels == 1
-            )
+            # waveform, sample_rate = librosa.load(str(abs_path), sr=self.sample_rate, mono=self.channels == 1)
+            waveform, sr = torchaudio.load(str(abs_path)) # shape: [channels, time]
         except (audioread.exceptions.NoBackendError, ZeroDivisionError):
             logger.warning(f"Not able to load {abs_path}, removing from dataset")
             self.audio_files.drop(idx, inplace=True)
             return self[idx]
+        if sr != self.sample_rate:
+            waveform = F.resample(waveform, orig_freq=sr, new_freq=self.sample_rate)
+        
+        # convert to mono if needed
+        if self.channels == 1 and waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+        elif self.channels == 2 and waveform.shape[0] == 1:
+            waveform = waveform.expand(2, -1)
 
-        # add channel dimension IF loaded audio was mono
-        waveform = torch.as_tensor(waveform)
-        if len(waveform.shape) == 1:
-            waveform = waveform.unsqueeze(0)
-            waveform = waveform.expand(self.channels, -1)
-
-        return waveform, sample_rate
+        return waveform, self.sample_rate
 
     def __getitem__(self, idx):
         # waveform, sample_rate = torchaudio.load(self.audio_files.iloc[idx, :].values[0])

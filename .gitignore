@@ -2,6 +2,11 @@ LibriSpeech/
 librispeech_test.csv
 librispeech_train100h.csv
 .vscode/*
+librispeech_train100h_test.csv
+librispeech_train100h_train.csv
+tsne_plots/
+.pth
+
 
 # Local History for Visual Studio Code
 .history/
