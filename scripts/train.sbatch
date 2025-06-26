@@ -21,6 +21,7 @@ source /ext3/env.sh
 export SSL_CERT_FILE=/scratch/lg154/sseg/fs-ood/cacert.pem
 
 python train_multi_gpu.py \
+        --config-name config_tree \
         distributed.data_parallel=False \
         common.save_interval=1 \
         common.test_interval=1 \

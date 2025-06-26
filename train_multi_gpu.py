@@ -376,14 +376,13 @@ class Trainer:
         logger.addHandler(stream_handler)
     
     @torch.no_grad()
-    def analyze_codebook_stats(self):
+    def analyze_codebook_stats(self, l=1, num_batch=None, folder='/scratch/lg154/sseg/encodec/'):
         from collections import defaultdict
 
         model = self.model.module if hasattr(self.model, "module") else self.model
         model.eval()
 
         quantizer = model.quantizer
-        num_layers = model.quantizer.n_q
         dim = quantizer.dimension
         device = next(model.parameters()).device
 
@@ -411,36 +410,45 @@ class Trainer:
 
                 for i, (code_tuple, vec) in enumerate(zip(composite_codes.tolist(), emb_flat)):
                     # Generate all prefixes: (c₀,), (c₀,c₁), ..., (c₀,...,cₖ₋₁)
-                    for j in range(1, 3): # len(code_tuple)+1
+                    max_depth = min(len(code_tuple), l)
+                    for j in range(1, max_depth + 1):
                         key = tuple(code_tuple[:j])
                         sums[key] += vec
                         sums_sq[key] += vec ** 2
                         counts[key] += 1
                         index_map[key].append(global_index + i )
+
                 global_index += emb_flat.shape[0]
-                if global_index >= 90000: 
+                if num_batch and global_index >= num_batch: 
+                    break
+            if num_batch and global_index >= num_batch: 
                     break
 
         embeddings_tensor = torch.cat(embeddings, dim=0)  # [N, D]
         
         # Compute stats
+        means = {}
+        variances = {}
         print("\n===== Composite Codebook Statistics =====")
         for code_tuple in sorted(counts.keys()):
             count = counts[code_tuple]
-            mean = sums[code_tuple] / count
-            var = (sums_sq[code_tuple] / count) - mean.pow(2)
+            means[code_tuple] = sums[code_tuple] / count
+            variances[code_tuple] = (sums_sq[code_tuple] / count) - means[code_tuple].pow(2)
             if len(code_tuple)==1:
-                print(f"Code {code_tuple}: count={count:6d}, mean_norm={mean.norm():.4f}, avg_var={var.mean().item():.4f}")
+                print(f"Code {code_tuple}: count={count:6d}, mean_norm={means[code_tuple].norm():.4f}, "
+                      f"avg_var={variances[code_tuple].mean().item():.4f}")
         
-        print("====== save the result ======")
+        print("====== Saving the result ======")
         serializable_index_map = {str(k): v for k, v in index_map.items()}
+        filepath = os.path.join(folder, f"codebook_stats_layers{l}.pth")
         torch.save({
             "embeddings": embeddings_tensor,
             "index_map": serializable_index_map,
-            "codebook_embeddings": codebook_embeddings
-        }, "codebook_stats1.pth")
-        logger.info(f"save file to codebook_stats1.pth")
-
+            "codebook_embeddings": codebook_embeddings,
+            "means": means, 
+            "variances": variances
+        }, filepath)
+        logger.info(f"Saved results to {filepath}")
 
 
 @hydra.main(config_path='config', config_name='config')

@@ -5,7 +5,7 @@ common:
   max_epoch: 100
   seed: 3401
   amp: False
-  exp_name: 'base'
+  exp_name: 'tree_rvq'
 
 datasets:
   train_csv_path: '/scratch/lg154/sseg/encodec/librispeech_train100h_train.csv'
@@ -63,3 +63,7 @@ balancer:
 quantizer:
   stagewise: True
   stage: 1
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${common.exp_name}

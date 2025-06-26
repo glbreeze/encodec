@@ -57,6 +57,7 @@ class ResidualVectorQuantizer(nn.Module):
         self,
         dimension: int = 256,
         n_q: int = 8,
+        train_n_q: tp.Optional[int] = None,
         bins: int = 1024,
         decay: float = 0.99,
         kmeans_init: bool = True,
@@ -65,7 +66,7 @@ class ResidualVectorQuantizer(nn.Module):
     ):
         super().__init__()
         self.n_q = n_q
-        self.train_n_q = None
+        self.train_n_q = train_n_q
         self.dimension = dimension
         self.bins = bins
         self.decay = decay

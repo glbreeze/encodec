@@ -43,7 +43,7 @@ def main(config):
     os.makedirs(config.checkpoint.save_folder, exist_ok=True)
 
     trainer = Trainer(0, 1, config)
-    trainer.analyze_codebook_stats()
+    trainer.analyze_codebook_stats(l=1, folder=os.path.dirname(os.path.dirname(config.checkpoint.checkpoint_path)))
 
 
 if __name__ == '__main__':
